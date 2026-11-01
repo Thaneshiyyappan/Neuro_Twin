@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>NEUROTWIN OS v3.0 // 3D Cognitive Digital Twin &amp; Spatial Second Brain</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script
+        type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #05060d;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace
+        }
+
+        .hud {
+            background: rgba(8, 10, 22, .74);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 229, 255, .25);
+            box-shadow: 0 0 24px rgba(0, 229, 255, .08)
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            border: 1px solid #0ee;
+            padding: .4rem .5rem;
+            font-size: 11px;
+            background: rgba(0, 229, 255, .08);
+            color: #7ef;
+            border-radius: 4px;
+            text-align: left;
+            cursor: pointer
+        }
+
+        .btn:hover,
+        .btn:focus-visible {
+            background: rgba(0, 229, 255, .24);
+            outline: none
+        }
+
+        .crim {
+            border-color: #ff1c3c;
+            color: #ff8a9a;
+            background: rgba(255, 28, 60, .12)
+        }
+
+        .crim:hover {
+            background: rgba(255, 28, 60, .3)
+        }
+
+        .inp {
+            width: 100%;
+            background: rgba(0, 0, 0, .45);
+            border: 1px solid #165;
+            padding: .3rem .4rem;
+            color: #cfe;
+            font-size: 11px;
+            border-radius: 4px
+        }
+
+        .inp:focus {
+            outline: 1px solid #0ee
+        }
+
+        @media(max-width:700px) {
+            aside {
+                width: 44vw !important
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <aside
+        class="hud absolute top-3 left-3 w-72 p-3 rounded-lg text-cyan-100 text-xs space-y-2 max-h-[94vh] overflow-auto">
+        <div class="text-sm font-bold tracking-widest text-cyan-300">NEUROTWIN OS v3.0</div>
+        <div class="opacity-60 -mt-1">3D Cognitive Digital Twin // Spatial Second Brain</div>
+        <div class="opacity-60 pt-1">Ingest a concept</div>
+        <form id="f" class="space-y-1.5">
+            <input id="ti" class="inp" placeholder="Title" required maxlength="40">
+            <select id="cl" class="inp"></select>
+            <input id="kw" class="inp" placeholder="Semantic keywords (space or comma)">
+            <button class="btn" style="text-align:center">Ingest and auto-link</button>
+        </form>
+        <div class="opacity-60 pt-1">Pitch presets</div>
+        <div id="pre" class="grid gap-1"></div>
+        <div id="leg" class="grid gap-0.5 pt-1"></div>
+        <div id="st" class="opacity-70 pt-1"></div>
+    </aside>
+    <aside
+        class="hud absolute top-3 right-3 w-72 p-3 rounded-lg text-cyan-100 text-xs space-y-2 max-h-[94vh] overflow-auto">
+        <div class="text-sm font-bold tracking-widest text-red-300">DIGITAL TWIN // CRIMSON DAWN</div>
+        <button id="bConsult" class="btn crim">Consult Digital Twin (Analyze &amp; Speak)</button>
+        <button id="bWeak" class="btn">Highlight Weak Nodes</button>
+        <button id="bClose" class="btn">Avatar Closeup</button>
+        <div class="opacity-60 pt-1">Node inspector</div>
+        <div id="insp" class="hud rounded p-2 min-h-[5rem]"></div>
+    </aside>
+    <div id="sub"
+        class="hud hidden absolute bottom-4 left-1/2 -translate-x-1/2 max-w-2xl w-[92vw] p-3 rounded text-xs text-cyan-100 leading-relaxed">
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        const $ = id => document.getElementById(id), W = () => innerWidth, H = () => innerHeight;
+        const esc = s => s.replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+        const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+        const clock = new THREE.Clock();
+
+        /* ---------- renderer / scene ---------- */
+        const scene = new THREE.Scene(); scene.background = new THREE.Color(0x05060d); scene.fog = new THREE.FogExp2(0x05060d, .014);
+        const camera = new THREE.PerspectiveCamera(50, W() / H(), .1, 200); camera.position.set(0, 9, 20);
+        const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(W(), H());
+        document.body.appendChild(renderer.domElement);
+        const css = new CSS2DRenderer(); css.setSize(W(), H());
+        Object.assign(css.domElement.style, { position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }); document.body.appendChild(css.domElement);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        Object.assign(controls, { enableDamping: true, maxPolarAngle: Math.PI * .52, minDistance: 3, maxDistance: 40 }); controls.target.set(0, 2.5, 0);
+        const composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, camera));
+        composer.addPass(new UnrealBloomPass(new THREE.Vector2(W(), H()), .85, .6, .22));
+
+        scene.add(new THREE.AmbientLight(0x6070a0, .7));
+        const dl = new THREE.DirectionalLight(0xffffff, 1.1); dl.position.set(4, 10, 8); scene.add(dl);
+        const pl = new THREE.PointLight(0xff2244, 40, 14); pl.position.set(0, 4, 3.5); scene.add(pl);
+        const pl2 = new THREE.PointLight(0x00e5ff, 30, 12); pl2.position.set(0, .5, 0); scene.add(pl2);
+
+        const M = (c, e = 0, ei = 0, m = .3, r = .55) => new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: ei, metalness: m, roughness: r });
+        const mk = (g, m, x = 0, y = 0, z = 0, p = scene) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); p.add(o); return o };
+        const grp = (p, x = 0, y = 0, z = 0) => { const g = new THREE.Group(); g.position.set(x, y, z); p.add(g); return g };
+        const OB = M(0x14111c, 0x200508, .35, .7, .35), GOLD = M(0xe3b023, 0x4a3000, .4, .9, .3), CR = M(0xc4122b, 0xc4122b, .5),
+            PY = M(0xff7a1a, 0xff5a00, 2.6), SKIN = M(0xf1c8a7, 0, 0, 0, .8), HAIR = M(0xb3122a, 0x5a0010, .5, .1, .5), EYE = M(0xff1030, 0xff1030, 3.2);
+        const cyl = (a, b, h, s = 16, o = false) => new THREE.CylinderGeometry(a, b, h, s, 1, o);
+
+        /* ---------- ground: grid, radar rings, pedestal ---------- */
+        const grid = new THREE.GridHelper(44, 44, 0x0aa7c0, 0x0a3a55); grid.position.y = .01; grid.material.transparent = true; grid.material.opacity = .45; scene.add(grid);
+        [6, 10, 14, 18].forEach((r, i) => { const m = mk(new THREE.RingGeometry(r - .04, r + .04, 96), new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: .5 - i * .08, side: THREE.DoubleSide }), 0, .02, 0); m.rotation.x = -Math.PI / 2 });
+        const sweep = mk(new THREE.CircleGeometry(18, 48, 0, Math.PI / 7), new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: .09, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }), 0, .03, 0); sweep.rotation.x = -Math.PI / 2;
+        [[2.4, .2], [1.9, .2], [1.4, .2]].forEach(([r, h], i) => {
+            mk(cyl(r, r + .15, h, 48), M(0x0c1020, 0x001a2a, .5, .8, .3), 0, h / 2 + i * h);
+            const t = mk(new THREE.TorusGeometry(r + .08, .025, 8, 64), M(0, i % 2 ? 0xff2244 : 0x00e5ff, 2.5), 0, h * (i + 1), 0); t.rotation.x = Math.PI / 2;
+        });
+        const rune = mk(new THREE.TorusGeometry(2.9, .03, 6, 6), M(0, 0xff2244, 2.5), 0, .35, 0); rune.rotation.x = Math.PI / 2;
+
+        /* ---------- avatar: CRIMSON DAWN ---------- */
+        const avatar = grp(scene, 0, .6, 0), proc = grp(avatar), torso = grp(proc, 0, 1.3, 0);
+        let jawMesh = null;
+        [-1, 1].forEach(s => { mk(cyl(.17, .14, 1.3, 12), OB, s * .22, .65, 0, proc); mk(new THREE.BoxGeometry(.3, .18, .42), GOLD, s * .22, .09, .06, proc) });
+        mk(cyl(.48, .4, 1.3), OB, 0, .65, 0, torso);                 // tailcoat body
+        mk(cyl(.42, .52, .5, 20), OB, 0, .0, 0, torso);               // hip skirt
+        mk(cyl(.3, .38, .42, 18, true), Object.assign(OB.clone(), { side: THREE.DoubleSide }), 0, 1.42, 0, torso); // high collar
+        mk(cyl(.31, .31, .04, 18, true), GOLD, 0, 1.64, 0, torso);
+        [-1, 1].forEach(s => { const p = mk(new THREE.SphereGeometry(.3, 16, 12), GOLD, s * .64, 1.2, 0, torso); p.scale.set(1, .6, 1.1) });
+        const crav = mk(new THREE.ConeGeometry(.17, .55, 4), CR, 0, 1.0, .44, torso); crav.rotation.x = Math.PI;
+        mk(new THREE.OctahedronGeometry(.09), PY, 0, 1.22, .5, torso);
+        const belt = mk(cyl(.47, .47, .12, 24), GOLD, 0, .2, 0, torso);
+        mk(new THREE.SphereGeometry(.11, 14, 12), PY, .42, .2, .22, torso);
+        mk(new THREE.TorusGeometry(.13, .02, 8, 20), GOLD, .42, .2, .22, torso);
+        const tails = [-1, 1].map(s => {
+            const p = grp(torso, s * .2, 0, -.35); const g = new THREE.BoxGeometry(.4, 1.1, .06); g.translate(0, -.55, 0); mk(g, OB, 0, 0, 0, p);
+            mk(new THREE.BoxGeometry(.42, .05, .08), GOLD, 0, -1.1, 0, p); return p
+        });
+        const mkArm = s => {
+            const p = grp(torso, s * .64, 1.15, 0); p.rotation.order = 'YXZ'; const g = cyl(.12, .1, .9, 12); g.translate(0, -.45, 0); mk(g, OB, 0, 0, 0, p);
+            mk(cyl(.115, .115, .07, 12), GOLD, 0, -.8, 0, p); mk(new THREE.SphereGeometry(.1, 12, 10), SKIN, 0, -.97, 0, p); return p
+        };
+        const armL = mkArm(1), armR = mkArm(-1);
+        // head
+        const head = grp(torso, 0, 1.5, 0);
+        mk(new THREE.SphereGeometry(.38, 32, 24), SKIN, 0, .4, 0, head).scale.set(.92, 1.05, .95);
+        [-1, 1].forEach(s => {
+            mk(new THREE.SphereGeometry(.055, 12, 10), EYE, s * .15, .42, .33, head).scale.set(1, 1.4, .5);
+            mk(new THREE.BoxGeometry(.17, .025, .03), HAIR, s * .15, .55, .35, head).rotation.z = s * .3
+        });
+        mk(new THREE.BoxGeometry(.14, .035, .03), M(0x501018), 0, .2, .33, head);
+        const jg = new THREE.BoxGeometry(.2, .07, .16); jg.translate(0, -.035, .07);
+        jawMesh = mk(jg, M(0xe0b090, 0, 0, 0, .8), 0, .2, .2, head);
+        const cap = mk(new THREE.SphereGeometry(.42, 24, 16, 0, Math.PI * 2, 0, Math.PI * .58), HAIR, 0, .42, -.03, head); cap.rotation.x = -.3;
+        for (let i = 0; i < 5; i++) { const c = mk(new THREE.ConeGeometry(.07, .4, 6), HAIR, (i - 2) * .12, .68, .34, head); c.rotation.set(Math.PI + .25, 0, (i - 2) * .14) }
+        [-1, 1].forEach(s => { const c = mk(new THREE.ConeGeometry(.09, .72, 6), HAIR, s * .36, .34, .18, head); c.rotation.set(Math.PI, 0, s * .1) });
+        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, c = mk(new THREE.ConeGeometry(.09, .44, 6), HAIR, Math.sin(a) * .2, .8, Math.cos(a) * .2 - .1, head); c.rotation.set(Math.cos(a) * .6, 0, -Math.sin(a) * .6) }
+        const pAnchor = grp(head, 0, .74, -.34); mk(new THREE.SphereGeometry(.09, 12, 10), GOLD, 0, 0, 0, pAnchor);
+        const pony = []; let par = pAnchor;
+        for (let i = 0; i < 7; i++) { const s = grp(par, 0, i ? -.38 : 0, 0), g = cyl(.12 - i * .011, .12 - (i + 1) * .011, .4, 8); g.translate(0, -.2, 0); mk(g, HAIR, 0, 0, 0, s); pony.push(s); par = s }
+        // greatsword
+        const sword = grp(avatar, -1.0, 3.0, -.75); sword.rotation.z = .18;
+        mk(new THREE.BoxGeometry(.2, 2.6, .05), OB, 0, 0, 0, sword);
+        [-1, 1].forEach(s => mk(new THREE.BoxGeometry(.03, 2.6, .06), PY, s * .105, 0, 0, sword));
+        mk(new THREE.ConeGeometry(.14, .4, 4), OB, 0, 1.5, 0, sword).rotation.y = Math.PI / 4;
+        mk(new THREE.BoxGeometry(.6, .08, .14), GOLD, 0, -1.35, 0, sword); mk(cyl(.04, .04, .7, 8), OB, 0, -1.75, 0, sword); mk(new THREE.SphereGeometry(.07, 10, 8), PY, 0, -2.15, 0, sword);
+        // GLTF hook: swap in a real model when present
+        new GLTFLoader().load('./assets/models/thanesh_avatar.glb', g => { proc.visible = false; sword.visible = false; avatar.add(g.scene); jawMesh = g.scene.getObjectByName('jawMesh') || null; }, undefined, () => { });
+
+        /* ---------- knowledge graph ---------- */
+        const CL = { ai: { n: 'AI & Data Science', c: 0x00e5ff }, d3: { n: '3D & WebGL', c: 0xb06bff }, sys: { n: 'Systems & IoT', c: 0x39ff88 }, cre: { n: 'Creative & Lore', c: 0xffb020 } };
+        const CRIM = new THREE.Color(0xff1030);
+        const nodes = [], links = []; let seq = 0, sel = null, target = null, bott = null, weakMode = false, speaking = false, energy = 0, flying = false, camGoal = null, lookGoal = null;
+        const tok = s => s.toLowerCase().match(/[a-z0-9]+/g) || [];
+        const vec = s => { const m = new Map(); tok(s).forEach(t => m.set(t, (m.get(t) || 0) + 1)); return m };
+        const cos = (a, b) => { let d = 0, x = 0, y = 0; a.forEach((v, k) => { x += v * v; if (b.has(k)) d += v * b.get(k) }); b.forEach(v => y += v * v); return x && y ? d / Math.sqrt(x * y) : 0 };
+        const rank = v => nodes.map(n => ({ n, s: cos(v, n.vec) })).filter(x => x.s > .03).sort((a, b) => b.s - a.s);
+        const polar = (d, r, y) => { const a = d * Math.PI / 180; return V3(r * Math.cos(a), y, r * Math.sin(a)) };
+
+        function link(a, b) {
+            if (links.some(l => (l.a === a && l.b === b) || (l.a === b && l.b === a))) return;
+            const mid = a.pos.clone().add(b.pos).multiplyScalar(.5); mid.y += 1.5 + a.pos.distanceTo(b.pos) * .15;
+            const curve = new THREE.QuadraticBezierCurve3(a.pos.clone(), mid, b.pos.clone()), c = a.col.clone().lerp(b.col, .5);
+            scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(40)), new THREE.LineBasicMaterial({ color: c, transparent: true, opacity: .55 })));
+            const p = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff })); scene.add(p);
+            links.push({ a, b, curve, p, o: Math.random(), sp: .1 + Math.random() * .1 }); a.deg++; b.deg++; stat();
+        }
+        function addNode(title, cl, kw, mastery, pos) {
+            const col = new THREE.Color(CL[cl].c), g = grp(scene, pos.x, pos.y, pos.z), mat = M(col, col, 1.6, .2, .3);
+            const mesh = mk(new THREE.SphereGeometry(.42, 24, 18), mat, 0, 0, 0, g);
+            const wire = mk(new THREE.IcosahedronGeometry(.7, 1), new THREE.MeshBasicMaterial({ color: col, wireframe: true, transparent: true, opacity: .35 }), 0, 0, 0, g);
+            const el = document.createElement('div'); el.className = 'text-[11px] px-1.5 py-0.5 rounded bg-black/60 border whitespace-nowrap';
+            el.style.borderColor = el.style.color = '#' + col.getHexString(); el.textContent = title;
+            const lab = new CSS2DObject(el); lab.position.set(0, 1, 0); g.add(lab);
+            const n = { id: seq++, title, cl, kw, vec: vec(title + ' ' + kw), mastery, pos: g.position, g, mesh, wire, mat, col, deg: 0, state: '', born: clock.elapsedTime };
+            mesh.userData.n = n; g.scale.setScalar(.001);
+            const r = rank(n.vec).slice(0, 2);
+            if (r.length) r.forEach(x => link(n, x.n));
+            else if (nodes.length) { const near = nodes.slice().sort((a, b) => a.pos.distanceTo(pos) - b.pos.distanceTo(pos))[0]; link(n, near) }
+            nodes.push(n); stat(); return n;
+        }
+        const SEEDS = [
+            ['Neural Networks', 'ai', 'machine learning tensors gradient python', .8, 170, 9, 2.6],
+            ['Vector Embeddings', 'ai', 'embeddings cosine similarity semantic search python', .55, 200, 12, 3.2],
+            ['LLM Agents', 'ai', 'agents llm tools prompt memory', .35, 232, 9.5, 2.4],
+            ['Three.js Rendering', 'd3', 'webgl shaders scene camera 3d', .7, 262, 10.5, 3],
+            ['Shader Programming', 'd3', 'glsl shaders webgl gpu 3d', .3, 295, 12, 2.5],
+            ['ESP32 IoT Sensors', 'sys', 'iot esp32 sensors mqtt firmware', .6, -15, 10, 2.8],
+            ['Edge Inference', 'sys', 'iot edge inference tensors gpu python', .25, 18, 12.5, 3.3],
+            ['Genshin Lore Graph', 'cre', 'lore story graph characters', .5, 128, 11, 2.6],
+            ['Anime Character Design', 'cre', 'character design 3d anime story', .65, 55, 11, 3]];
+        SEEDS.forEach(s => addNode(s[0], s[1], s[2], s[3], polar(s[4], s[5], s[6])));
+
+        const PRESETS = [
+            ['RAG Pipeline for Notes', 'ai', 'embeddings retrieval llm semantic search vector python'],
+            ['GPU Particle Memory Palace', 'd3', 'webgl shaders particles 3d gpu scene'],
+            ['Edge-AI Wearable Twin', 'sys', 'iot esp32 edge inference sensors tensors']];
+
+        /* ---------- HUD logic ---------- */
+        $('cl').innerHTML = Object.entries(CL).map(([k, v]) => `<option value="${k}">${v.n}</option>`).join('');
+        $('leg').innerHTML = Object.values(CL).map(v => `<div class="flex items-center gap-2"><i class="w-2 h-2 rounded-full inline-block" style="background:#${v.c.toString(16).padStart(6, '0')}"></i>${v.n}</div>`).join('');
+        PRESETS.forEach(p => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = p[0]; b.onclick = () => { $('ti').value = p[0]; $('cl').value = p[1]; $('kw').value = p[2]; ingest(p[0], p[1], p[2]) }; $('pre').appendChild(b) });
+        $('f').onsubmit = e => { e.preventDefault(); const t = $('ti').value.trim(); if (t) { ingest(t, $('cl').value, $('kw').value.trim()); e.target.reset() } };
+        function stat() { const a = nodes.length ? nodes.reduce((s, n) => s + n.mastery, 0) / nodes.length : 0; $('st').textContent = `${nodes.length} nodes / ${links.length} links / avg mastery ${Math.round(a * 100)}%` }
+        function insp() {
+            const n = sel;
+            $('insp').innerHTML = n ? `<div class="text-cyan-300 font-bold">${esc(n.title)}</div><div class="opacity-70">${CL[n.cl].n}</div><div>Links ${n.deg} / mastery ${Math.round(n.mastery * 100)}%</div><div class="h-1.5 bg-slate-700 rounded my-1"><div class="h-full bg-cyan-400 rounded" style="width:${n.mastery * 100}%"></div></div><div class="opacity-60 break-words">${esc(n.kw)}</div><button id="lg" class="btn mt-2">Log 45-min session (+15%)</button>` : 'Click a node to inspect it.';
+            const b = $('lg'); if (b) b.onclick = () => { n.mastery = Math.min(1, n.mastery + .15); if (bott === n) clearBott(); insp(); stat() };
+        }
+        insp();
+        function select(n) { sel = target = n; insp() }
+        function flyTo(p, l) { camGoal = p; lookGoal = l; flying = true }
+        controls.addEventListener('start', () => flying = false);
+        function flyToNode(n) { const d = n.pos.clone().setY(0).normalize(); flyTo(n.pos.clone().addScaledVector(d, 8).add(V3(0, 3, 0)), n.pos.clone()) }
+        function ingest(t, cl, kw) {
+            const m = rank(vec(t + ' ' + kw)).slice(0, 3), p = V3(0, 0, 0);
+            if (m.length) { m.forEach(x => p.add(x.n.pos)); p.divideScalar(m.length) }
+            else p.copy(polar({ ai: 200, d3: 275, sys: 5, cre: 90 }[cl], 11, 2.6));
+            p.y = 2.4 + Math.random() * 1.2;
+            for (let i = 0; i < 60 && !(nodes.every(n => n.pos.distanceTo(p) > 2.8) && Math.hypot(p.x, p.z) > 6); i++) { p.x += (Math.random() - .5) * 3; p.z += (Math.random() - .5) * 3 }
+            const n = addNode(t, cl, kw, .25, p); select(n); flyToNode(n);
+        }
+        function clearBott() { if (bott) bott.state = ''; bott = null; beacon.visible = false }
+        const beacon = mk(new THREE.TorusGeometry(.95, .04, 8, 40), new THREE.MeshBasicMaterial({ color: 0xff1030 })); beacon.visible = false;
+        function neigh(n) { return links.filter(l => l.a === n || l.b === n).map(l => l.a === n ? l.b : l.a) }
+        function speak(t) {
+            const s = $('sub'); s.textContent = t; s.classList.remove('hidden');
+            if (!('speechSynthesis' in window)) { speaking = true; setTimeout(() => speaking = false, t.length * 60); return }
+            speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t), v = speechSynthesis.getVoices().find(v => /^en/i.test(v.lang));
+            if (v) u.voice = v; u.rate = 1; u.pitch = .85; u.onstart = () => speaking = true; u.onboundary = () => energy = 1; u.onend = u.onerror = () => speaking = false; speechSynthesis.speak(u);
+        }
+        function consult() {
+            const mx = Math.max(1, ...nodes.map(n => n.deg)); let w = null, ws = -1;
+            nodes.forEach(n => { const s = .5 * n.deg / mx + .5 * (1 - n.mastery); if (s > ws) { ws = s; w = n } });
+            clearBott(); bott = w; w.state = 'bott'; sel = target = w; insp(); beacon.visible = true; beacon.position.copy(w.pos);
+            flyTo(V3(w.pos.x * .3, 6, 14), V3(w.pos.x * .4, 2.5, w.pos.z * .4));
+            const kws = w.kw.split(/[\s,]+/).filter(Boolean).slice(0, 3).join(', '), nb = neigh(w)[0];
+            speak(`Directive. Your weakest bottleneck is ${w.title}. It connects ${w.deg} concepts, yet your mastery is only ${Math.round(w.mastery * 100)} percent. For the next forty-five minutes: spend fifteen minutes studying the core of ${kws}. Spend twenty minutes coding a minimal working demo of ${w.title}. Then spend ten minutes writing what you learned and linking it to ${nb ? nb.title : 'your strongest node'}. Begin now.`);
+        }
+        $('bConsult').onclick = consult;
+        $('bWeak').onclick = e => { weakMode = !weakMode; e.target.textContent = weakMode ? 'Weak Nodes: ON (mastery < 50%)' : 'Highlight Weak Nodes' };
+        $('bClose').onclick = () => { target = null; flyTo(V3(0, 4.2, 4.8), V3(0, 3.5, 0)) };
+        const ray = new THREE.Raycaster(); let dn = null;
+        renderer.domElement.addEventListener('pointerdown', e => dn = [e.clientX, e.clientY]);
+        renderer.domElement.addEventListener('pointerup', e => {
+            if (!dn || Math.hypot(e.clientX - dn[0], e.clientY - dn[1]) > 5) return;
+            ray.setFromCamera(new THREE.Vector2(e.clientX / W() * 2 - 1, -(e.clientY / H()) * 2 + 1), camera);
+            const h = ray.intersectObjects(nodes.map(n => n.mesh))[0]; if (h) select(h.object.userData.n);
+        });
+        addEventListener('resize', () => { camera.aspect = W() / H(); camera.updateProjectionMatrix(); renderer.setSize(W(), H()); composer.setSize(W(), H()); css.setSize(W(), H()) });
+
+        /* ---------- animation ---------- */
+        const dA = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a)), cl = THREE.MathUtils.clamp;
+        renderer.setAnimationLoop(() => {
+            const dt = clock.getDelta(), t = clock.elapsedTime;
+            nodes.forEach(n => {
+                const k0 = Math.min(1, (t - n.born) / .9); let k = 1 - Math.pow(1 - k0, 3), c = n.col, ei = .8 + n.mastery * 1.4;
+                if (n.state === 'bott') { c = CRIM; ei = 2.5 + Math.sin(t * 6); k *= 1 + .12 * Math.sin(t * 6) }
+                else if (weakMode && n.mastery < .5) { c = CRIM; ei = 1.2 + .8 * Math.sin(t * 4) }
+                n.mat.color.copy(c); n.mat.emissive.copy(c); n.mat.emissiveIntensity = ei;
+                n.g.scale.setScalar(Math.max(.001, k * (sel === n ? 1.25 : 1))); n.wire.rotation.y = t * .5; n.wire.rotation.x = t * .3;
+            });
+            links.forEach(l => l.p.position.copy(l.curve.getPoint((t * l.sp + l.o) % 1)));
+            if (beacon.visible) { beacon.rotation.x = Math.PI / 2; beacon.rotation.z = t * 2; beacon.scale.setScalar(1 + .15 * Math.sin(t * 5)) }
+            sweep.rotation.z = -t * .6; rune.rotation.z = t * .3;
+            // avatar kinematics
+            torso.position.y = 1.3 + Math.sin(t * 1.6) * .025; torso.scale.y = 1 + Math.sin(t * 1.6) * .008; avatar.position.y = .6 + Math.sin(t * 1.1) * .04;
+            let yaw = 0, pitch = 0;
+            if (target) { const d = target.pos.clone().sub(avatar.position), hd = Math.hypot(d.x, d.z); yaw = Math.atan2(d.x, d.z); pitch = cl(-Math.atan2(d.y - 3.05, hd), -.5, .5) }
+            avatar.rotation.y += dA(avatar.rotation.y, yaw * .55) * .05;
+            const hy = cl(dA(avatar.rotation.y, yaw), -.9, .9);
+            head.rotation.y += (hy - head.rotation.y) * .08; head.rotation.x += (pitch - head.rotation.x) * .08; head.rotation.z = Math.sin(t * .8) * .03;
+            armR.rotation.x += ((target ? -1.45 : .05 + Math.sin(t * 1.6) * .03) - armR.rotation.x) * .06;
+            armR.rotation.y += ((target ? hy : 0) - armR.rotation.y) * .06; armR.rotation.z = target ? 0 : -.08;
+            armL.rotation.x = Math.sin(t * 1.6 + 1) * .03; armL.rotation.z = .08;
+            tails.forEach((p, i) => { p.rotation.x = .12 + Math.sin(t * 2.4 + i) * .12; p.rotation.z = (i ? 1 : -1) * (.05 + Math.sin(t * 1.7 + i) * .04) });
+            pony.forEach((s, i) => { s.rotation.x = (i ? -.1 : .85) + Math.sin(t * 3 - i * .7) * .14; s.rotation.z = Math.sin(t * 2.2 - i * .6) * .12 });
+            sword.position.y = 3 + Math.sin(t * 1.3) * .1; sword.rotation.y = Math.sin(t * .5) * .1;
+            energy *= .93;
+            if (jawMesh) { const open = speaking ? (.12 + .3 * Math.abs(Math.sin(t * 16))) * (.4 + .6 * Math.max(energy, .5)) : 0; jawMesh.rotation.x += (open - jawMesh.rotation.x) * .4 }
+            if (flying && camGoal) { camera.position.lerp(camGoal, .05); controls.target.lerp(lookGoal, .05); if (camera.position.distanceTo(camGoal) < .05) flying = false }
+            controls.update(); composer.render(dt); css.render(scene, camera);
+        });
+    </script>
+</body>
+
+</html>

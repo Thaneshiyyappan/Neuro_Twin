@@ -1,0 +1,103 @@
+[]{
+    "nodes": [
+        {
+            "id": "n1",
+            "title": "Three.js & WebGL Engine",
+            "category": "graphics",
+            "tags": [
+                "3d",
+                "webgl",
+                "graphics",
+                "javascript",
+                "shaders",
+                "scene",
+                "geometry"
+            ],
+            "mastery": 92,
+            "pos": [
+                -10,
+                4.5,
+                6
+            ]
+        },
+        {
+            "id": "n2",
+            "title": "Blender Python Scripting",
+            "category": "graphics",
+            "tags": [
+                "3d",
+                "blender",
+                "python",
+                "mesh",
+                "procedural",
+                "animation",
+                "geometry"
+            ],
+            "mastery": 86,
+            "pos": [
+                -15,
+                6.0,
+                -3
+            ]
+        },
+        {
+            "id": "n3",
+            "title": "B.Tech AI & Data Science",
+            "category": "ai",
+            "tags": [
+                "ai",
+                "machine-learning",
+                "python",
+                "data",
+                "neural",
+                "statistics",
+                "models"
+            ],
+            "mastery": 89,
+            "pos": [
+                10,
+                5.5,
+                5
+            ]
+        },
+        {
+            "id": "n4",
+            "title": "Local LLMs & Ollama",
+            "category": "ai",
+            "tags": [
+                "ai",
+                "llm",
+                "ollama",
+                "vector",
+                "embeddings",
+                "inference",
+                "python"
+            ],
+            "mastery": 84,
+            "pos": [
+                15,
+                4.0,
+                -5
+            ]
+        },
+        {
+            "id": "n5",
+            "title": "FastAPI & WebSockets",
+            "category": "systems",
+            "tags": [
+                "python",
+                "backend",
+                "api",
+                "websocket",
+                "server",
+                "realtime"
+            ],
+            "mastery": 54,
+            "pos": [
+                6,
+                2.5,
+                -13
+            ]
+        }
+    ]
+}
